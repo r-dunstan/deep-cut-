@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Deep Cut: the daily dig. Five prompts, 25 seconds each. The rarer your answer, the deeper you dig.">
+<meta name="theme-color" content="#0f1424">
+<title>Deep Cut</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Mono:wght@500&display=swap">
+<style>
+/* Layout: the whole screen is a cross-section of the mine. Night sky above, ground line at 58% of the
+   screen on the start page; the camera follows the miner down the shaft and the UI floats in the rock. */
+:root {
+  color-scheme: dark;
+  --sky-top: #0f1424;
+  --sky-low: #4b3a4a;
+  --fg: #f3e6d3;
+  --muted: #bfa88c;
+  --lantern: #ffb547;
+  --panel: rgba(18, 12, 9, 0.84);
+  --line: rgba(243, 230, 211, 0.16);
+  --bad: #e2725b;
+  --f-display: "Bowlby One SC", "Arial Black", Impact, sans-serif;
+  --f-body: "Bricolage Grotesque", system-ui, -apple-system, Segoe UI, sans-serif;
+  --f-mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--sky-top); color: var(--fg); font-family: var(--f-body); font-size: 16px; }
+
+/* ---------- the world ---------- */
+#world { position: fixed; left: 0; right: 0; top: 0; height: 0; will-change: transform; }
+.sky { position: absolute; left: -700px; right: -700px; top: -170vh; height: 170vh; background: linear-gradient(180deg, var(--sky-top) 0 55%, #1d2238 75%, var(--sky-low) 100%); overflow: hidden; }
+.star { position: absolute; border-radius: 50%; background: var(--fg); }
+.star.tw { animation: twinkle 2.6s ease-in-out infinite; }
+@keyframes twinkle { 50% { opacity: 0.2; } }
+.moon { position: absolute; right: 12%; bottom: 52vh; width: 46px; height: 46px; border-radius: 50%; box-shadow: -12px 6px 0 0 #efe2c8; transform: rotate(-20deg); }
+.hills { position: absolute; left: -700px; right: -700px; top: -70px; width: calc(100% + 1400px); height: 72px; }
+.under { position: absolute; left: -700px; right: -700px; top: 0; }
+.band { position: absolute; left: 0; right: 0; }
+#rulerWrap { position: fixed; left: 0; right: 0; top: 0; height: 0; pointer-events: none; will-change: transform; }
+.lbl { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); text-shadow: 0 1px 3px rgba(0,0,0,.8); font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(243, 230, 211, 0.4); }
+.darkness { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; background: linear-gradient(180deg, transparent 0, rgba(0,0,0,.25) 30%, rgba(0,0,0,.6) 100%); }
+.grass { position: absolute; left: -700px; right: -700px; top: -6px; height: 9px; background: #5d7a35; box-shadow: 0 -2px 0 #73943f inset; }
+.shaft { position: absolute; top: -3px; width: 70px; transform: translateX(-50%); height: 0; background: linear-gradient(90deg, #070504, #120d0a 30%, #120d0a 70%, #070504); box-shadow: 0 0 0 3px rgba(0,0,0,.35); }
+.headframe { position: absolute; left: calc(50% - 470px); top: -150px; width: 120px; height: 152px; }
+.cart { position: absolute; left: calc(50% + 330px); top: -40px; width: 78px; height: 42px; }
+.ruler { position: absolute; right: 0; top: 0; width: 56px; padding-right: env(safe-area-inset-right, 0px); }
+.tick { position: absolute; right: 8px; height: 1px; width: 8px; background: rgba(243,230,211,.3); }
+.tick.big { width: 16px; background: rgba(243,230,211,.55); }
+.tick span { position: absolute; right: 20px; top: -7px; font-family: var(--f-mono); font-size: 10px; color: rgba(243,230,211,.55); white-space: nowrap; }
+.glow { position: absolute; left: 50%; top: 0; width: 340px; height: 340px; margin-left: -150px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255,214,140,.22), transparent 62%); }
+#miner { position: absolute; left: 50%; top: 0; }
+.rope { position: absolute; left: calc(50% + 2px); top: -150px; width: 3px; background: repeating-linear-gradient(180deg, #c9b08a 0 5px, #9c845f 5px 10px); }
+.deco { position: absolute; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+.deco svg { display: block; width: 100%; height: auto; }
+.deco.gem { opacity: .92; }
+
+/* gems: one look per tier (used in the world, the HUD and the panels) */
+.gem { aspect-ratio: 1; position: relative; }
+.gem::before {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(50% 0, 100% 36%, 80% 100%, 20% 100%, 0 36%);
+  background:
+    linear-gradient(115deg, rgba(255,255,255,0.55) 0 18%, transparent 19%),
+    linear-gradient(245deg, rgba(0,0,0,0.25) 0 30%, transparent 31%),
+    linear-gradient(180deg, var(--g1), var(--g2));
+}
+.gem.t0::before { clip-path: polygon(12% 30%, 40% 6%, 78% 14%, 98% 46%, 84% 88%, 42% 98%, 6% 74%); background: radial-gradient(circle at 35% 30%, #a59d93, #5d5650 70%); }
+.gem.t1 { --g1: #f4f1ec; --g2: #b9b3ab; }
+.gem.t2 { --g1: #c79bf2; --g2: #6c33a8; }
+.gem.t3 { --g1: #6ff0a8; --g2: #0f7a47; }
+.gem.t4 { --g1: #ff7a8a; --g2: #a3122c; }
+.gem.t5 { --g1: #ffffff; --g2: #7fd3f0; }
+.gem.empty::before { clip-path: polygon(20% 40%, 50% 20%, 80% 45%, 60% 80%, 25% 75%); background: rgba(255,255,255,0.1); }
+.struck { position: absolute; width: 34px; transform: translate(-50%, -50%); filter: drop-shadow(0 0 8px rgba(255,230,170,.35)); animation: pop 520ms cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes pop { 0% { transform: translate(-50%,-50%) scale(0) rotate(-30deg); } 100% { transform: translate(-50%,-50%) scale(1); } }
+.flash { position: absolute; width: 20px; height: 20px; border-radius: 50%; transform: translate(-50%,-50%); background: radial-gradient(circle, rgba(255,244,210,.95), rgba(255,200,120,0) 70%); animation: flash 600ms ease-out forwards; pointer-events: none; }
+@keyframes flash { to { transform: translate(-50%,-50%) scale(var(--s, 8)); opacity: 0; } }
+.spark { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #ffe3a3; animation: spark 650ms ease-out forwards; pointer-events: none; }
+@keyframes spark { to { transform: translate(var(--x), var(--y)) scale(.2); opacity: 0; } }
+.dust { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #8a8178; transform: translate(-50%,-50%); animation: dust 600ms ease-out forwards; }
+@keyframes dust { to { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(2.2); opacity: 0; } }
+
+/* ---------- overlays ---------- */
+.title { position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 9vh); text-align: center; padding-inline: 16px; transition: opacity 500ms ease, transform 500ms ease; }
+.title.gone { opacity: 0; transform: translateY(-30px); pointer-events: none; }
+.title h1 { margin: 0; font-family: var(--f-display); font-size: clamp(54px, 13vw, 120px); line-height: 0.9; letter-spacing: 0.02em; color: var(--lantern); text-shadow: 0 4px 0 #8a4f0e, 0 0 40px rgba(255,181,71,.35); }
+.title .sub { margin-top: 14px; font-family: var(--f-mono); font-size: clamp(12px, 2.6vw, 16px); letter-spacing: 0.5em; text-transform: uppercase; color: var(--fg); padding-left: .5em; }
+.title .rules { margin-top: 12px; font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+
+.hud { position: fixed; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-block: calc(env(safe-area-inset-top, 0px) + 14px) 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: linear-gradient(180deg, rgba(10,7,5,.75), transparent); transition: opacity 400ms ease; }
+.hud.gone { opacity: 0; pointer-events: none; }
+.brand { font-family: var(--f-display); font-size: 20px; color: var(--lantern); }
+.sockets { display: flex; gap: 6px; }
+.socket { width: 30px; height: 30px; border-radius: 8px; background: rgba(0,0,0,.45); box-shadow: inset 0 2px 5px rgba(0,0,0,.6); display: grid; place-items: center; }
+.socket.now { outline: 2px dashed var(--lantern); outline-offset: 1px; }
+.socket .gem { width: 62%; }
+.depth { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.depth b { display: block; font-size: 20px; color: var(--fg); }
+.depth small { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+.panel { position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  width: min(560px, calc(100% - 32px)); max-height: 58dvh; overflow: auto; box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  display: flex; flex-direction: column; gap: 14px; transition: opacity 300ms ease; }
+.panel.hide { opacity: 0; pointer-events: none; }
+.lede { margin: 0; color: var(--muted); line-height: 1.5; }
+.lede b { color: var(--fg); }
+.legend { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; text-align: center; }
+.legend div { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.legend .gem { width: 26px; }
+.legend span { font-size: 11px; line-height: 1.15; }
+.legend small { display: block; font-family: var(--f-mono); color: var(--muted); font-size: 10px; }
+.foot { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+button {
+  font: inherit; cursor: pointer; border: 0; border-radius: 999px; padding: 14px 22px;
+  font-weight: 800; font-size: 17px; background: var(--lantern); color: #2a1a08;
+  box-shadow: 0 4px 0 #a86a12; transition: transform 80ms ease, box-shadow 80ms ease;
+}
+button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a86a12; }
+button:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+button.ghost { background: transparent; color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--line); }
+button.big { font-family: var(--f-display); font-weight: 400; font-size: 22px; letter-spacing: .06em; padding: 16px 22px; }
+
+.roundtag { font-family: var(--f-mono); font-size: 12px; color: var(--lantern); letter-spacing: 0.1em; text-transform: uppercase; }
+.prompt { font-family: var(--f-display); font-size: clamp(28px, 7vw, 40px); line-height: 1; margin: 0; text-wrap: balance; }
+.timer { height: 8px; border-radius: 99px; background: rgba(0,0,0,0.45); overflow: hidden; }
+.timer i { display: block; height: 100%; width: 100%; background: var(--lantern); transform-origin: left; }
+.timer.low i { background: var(--bad); }
+.secs { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+form { display: flex; gap: 10px; flex-wrap: wrap; }
+input { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 18px; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--line); background: rgba(0,0,0,0.4); color: var(--fg); }
+.hint { margin: 0; font-size: 13px; color: var(--bad); min-height: 1.2em; }
+
+.reveal { text-align: center; align-items: center; }
+.reveal-head { display: flex; align-items: center; gap: 14px; }
+.reveal-head .gem { width: 44px; }
+.tiername { font-family: var(--f-display); font-size: 32px; margin: 0; line-height: 1; }
+.pts { font-family: var(--f-mono); color: var(--lantern); font-size: 16px; text-align: left; }
+.youSaid { margin: 0; color: var(--muted); }
+.youSaid b { color: var(--fg); }
+.facts { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+.facts div { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; min-width: 0; }
+.facts small { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.facts b { overflow-wrap: anywhere; }
+.reveal button { width: 100%; }
+
+.total { font-family: var(--f-display); font-size: clamp(56px, 16vw, 84px); line-height: 0.9; margin: 0; color: var(--lantern); font-variant-numeric: tabular-nums; }
+.total small { font-size: 0.32em; color: var(--muted); }
+.recap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.recap li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.recap li:last-child { border-bottom: 0; }
+.recap .gem { width: 24px; }
+.recap .q { font-size: 12px; color: var(--muted); }
+.recap .a { font-weight: 600; overflow-wrap: anywhere; }
+.recap .p { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--lantern); }
+pre.share { margin: 0; font-family: var(--f-mono); background: rgba(0,0,0,0.35); border-radius: 12px; padding: 12px; white-space: pre-wrap; font-size: 15px; user-select: all; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row button { flex: 1 1 140px; }
+.toast { font-size: 13px; color: var(--muted); min-height: 1.2em; margin: 0; }
+
+@media (max-height: 640px) { .title { top: 4vh; } .title .rules { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="world">
+  <div class="sky" id="sky"><div class="moon"></div></div>
+  <svg class="hills" viewBox="0 0 1000 72" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,72 L0,46 C80,30 140,26 210,40 C280,54 330,20 420,22 C520,24 560,50 640,44 C720,38 780,14 870,20 C930,24 970,40 1000,36 L1000,72 Z" fill="#241d2b"/>
+    <path d="M0,72 L0,58 C120,48 200,60 300,56 C420,50 470,40 560,52 C650,62 760,46 860,52 C930,56 970,52 1000,50 L1000,72 Z" fill="#2f2531"/>
+  </svg>
+  <div class="under" id="under"></div>
+  <div class="grass"></div>
+  <svg class="headframe" viewBox="0 0 120 152" aria-hidden="true">
+    <g stroke="#5a3a22" stroke-width="6" stroke-linecap="round" fill="none">
+      <path d="M18,150 L56,26"/><path d="M96,150 L60,26"/><path d="M30,110 L86,110"/><path d="M40,72 L76,72"/>
+      <path d="M32,110 L74,72"/><path d="M84,110 L44,72"/>
+    </g>
+    <rect x="44" y="14" width="34" height="10" rx="2" fill="#3f2816"/>
+    <circle cx="61" cy="20" r="15" fill="none" stroke="#a7a19a" stroke-width="3.5"/>
+    <g stroke="#a7a19a" stroke-width="2"><path d="M61,5 V35"/><path d="M46,20 H76"/><path d="M50,9 L72,31"/><path d="M72,9 L50,31"/></g>
+    <circle cx="61" cy="20" r="3" fill="#ffb547"/>
+    <path d="M76,20 C100,20 116,40 118,152" stroke="#c9c2b8" stroke-width="1.5" fill="none" opacity=".6"/>
+  </svg>
+  <svg class="cart" viewBox="0 0 78 42" aria-hidden="true">
+    <path d="M6,6 L72,6 L64,30 L14,30 Z" fill="#6b4630"/><path d="M6,6 L72,6" stroke="#3a2618" stroke-width="3"/>
+    <path d="M18,6 L26,-2 L34,4 L44,-4 L54,3 L62,6 Z" fill="#8a8178"/>
+    <circle cx="22" cy="33" r="6" fill="#2a2321" stroke="#a7a19a" stroke-width="2"/><circle cx="56" cy="33" r="6" fill="#2a2321" stroke="#a7a19a" stroke-width="2"/>
+    <rect x="-4" y="39" width="86" height="3" fill="#4a3a30"/>
+  </svg>
+  <div id="shafts"></div>
+  <div class="rope" id="rope" hidden></div>
+  <div class="glow" id="glow"></div>
+  <div id="finds"></div>
+  <svg id="miner" aria-hidden="true">
+    <g class="bob">
+      <polygon points="9,-45 78,-66 78,-18" fill="url(#beam)"/>
+      <defs><linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff2c4" stop-opacity=".6"/><stop offset="1" stop-color="#fff2c4" stop-opacity="0"/></linearGradient></defs>
+      <rect x="-7" y="-16" width="5" height="16" rx="2" fill="#2f3b52"/>
+      <rect x="2" y="-16" width="5" height="16" rx="2" fill="#2f3b52"/>
+      <rect x="-8" y="-3" width="7" height="3" rx="1" fill="#1a1410"/><rect x="2" y="-3" width="7" height="3" rx="1" fill="#1a1410"/>
+      <rect x="-9" y="-35" width="18" height="21" rx="4" fill="#d9772b"/>
+      <rect x="-9" y="-27" width="18" height="2.5" fill="#f3e6d3" opacity=".85"/>
+      <circle cx="0" cy="-41" r="6.5" fill="#e0b48a"/>
+      <circle cx="3.2" cy="-41.5" r="1" fill="#2a1a08"/>
+      <path d="M-8,-42 A8,8 0 0 1 8,-42 Z" fill="#ffb547"/>
+      <rect x="-10" y="-43" width="20" height="2.5" rx="1" fill="#e09a2f"/>
+      <circle cx="7.5" cy="-45" r="2.4" fill="#fff6d8"/>
+      <g transform="translate(5,-29)"><g id="pick" transform="rotate(-55)">
+        <line x1="-1" y1="0" x2="27" y2="0" stroke="#8a5a32" stroke-width="3" stroke-linecap="round"/>
+        <path d="M25,-11 Q32,0 25,11" stroke="#c9ccd1" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <circle cx="7" cy="0" r="3" fill="#e0b48a"/>
+      </g></g>
+    </g>
+  </svg>
+</div>
+
+<div id="rulerWrap"><div id="labels"></div><div class="ruler" id="ruler"></div></div>
+
+<div class="title" id="title">
+  <h1>DEEP CUT</h1>
+  <div class="sub">The daily dig</div>
+  <div class="rules">5 prompts · 25 seconds each · rarer answers dig deeper</div>
+</div>
+
+<header class="hud gone" id="hud">
+  <div class="brand">Deep Cut</div>
+  <div class="sockets" id="sockets" aria-label="Today's finds"></div>
+  <div class="depth"><b id="scoreNum">0 pts</b><small id="stratum">Surface · 0 m</small></div>
+</header>
+
+<main class="panel" id="panel"></main>
+
+<script>
+const TIERS = [
+  { name: "Gravel",   pts: 10,  emoji: "🪨" },
+  { name: "Quartz",   pts: 25,  emoji: "⚪" },
+  { name: "Amethyst", pts: 40,  emoji: "🟣" },
+  { name: "Emerald",  pts: 60,  emoji: "🟢" },
+  { name: "Ruby",     pts: 80,  emoji: "🔴" },
+  { name: "Diamond",  pts: 100, emoji: "💎" },
+];
+const ROUNDS = 5, SECONDS = 25;
+
+// "Answer|tier|alias|alias"  — tier 0 (everyone says it) to 5 (almost nobody)
+const PROMPTS = [
+  { q: "A dog breed", common: "Labrador", list: `
+Labrador|0|labrador retriever|lab
+Golden Retriever|0|golden
+German Shepherd|0|alsatian
+Pug|0
+Bulldog|1|english bulldog|british bulldog
+French Bulldog|1|frenchie
+Poodle|1|toy poodle|miniature poodle
+Beagle|1
+Chihuahua|1
+Husky|1|siberian husky
+Rottweiler|1
+Dachshund|1|sausage dog|wiener dog
+Border Collie|1|collie
+Cocker Spaniel|2|spaniel
+Staffordshire Bull Terrier|2|staffy|staffie|staffordshire terrier
+Pit Bull|2|pitbull|american pit bull terrier
+Boxer|2
+Great Dane|2
+Dalmatian|2
+Jack Russell|2|jack russell terrier
+Shih Tzu|2
+Yorkshire Terrier|2|yorkie
+Pomeranian|2
+Corgi|2|welsh corgi|pembroke welsh corgi
+Doberman|2|dobermann|doberman pinscher
+Greyhound|2
+English Springer Spaniel|3|springer spaniel|springer
+Cavalier King Charles Spaniel|3|cavalier|king charles spaniel
+Bichon Frise|3|bichon
+Shiba Inu|3|shiba
+Saint Bernard|3|st bernard
+Bernese Mountain Dog|3|bernese
+Whippet|3
+Akita|3
+Samoyed|3
+Weimaraner|3
+Newfoundland|3
+Maltese|3
+Basset Hound|3|basset
+Bloodhound|3
+Chow Chow|3|chow
+Shar Pei|3|sharpei
+Vizsla|4
+Bedlington Terrier|4|bedlington
+Basenji|4
+Borzoi|4
+Rhodesian Ridgeback|4|ridgeback
+Afghan Hound|4|afghan
+Puli|4
+Komondor|5
+Xoloitzcuintli|5|xolo|mexican hairless
+Lagotto Romagnolo|5|lagotto
+Otterhound|5
+Norwegian Lundehund|5|lundehund
+Azawakh|5
+Bergamasco|5
+Kooikerhondje|5|kooiker
+Sealyham Terrier|5|sealyham
+Dandie Dinmont Terrier|5|dandie dinmont`},
+  { q: "A dinosaur", common: "Tyrannosaurus rex", list: `
+Tyrannosaurus|0|t rex|trex|tyrannosaurus rex|t-rex
+Triceratops|0
+Velociraptor|0|raptor
+Stegosaurus|0
+Brachiosaurus|1
+Diplodocus|1
+Spinosaurus|1
+Ankylosaurus|1
+Brontosaurus|1
+Apatosaurus|2
+Allosaurus|2
+Iguanodon|2
+Parasaurolophus|2
+Pachycephalosaurus|2
+Dilophosaurus|2
+Gallimimus|3
+Carnotaurus|3
+Megalosaurus|3
+Giganotosaurus|3
+Compsognathus|3
+Argentinosaurus|3
+Oviraptor|3
+Archaeopteryx|3
+Deinonychus|3
+Baryonyx|3
+Therizinosaurus|4
+Utahraptor|4
+Microraptor|4
+Edmontosaurus|4
+Protoceratops|4
+Maiasaura|4
+Styracosaurus|4
+Plateosaurus|4
+Coelophysis|4
+Herrerasaurus|4
+Amargasaurus|5
+Nigersaurus|5
+Kosmoceratops|5
+Irritator|5
+Mamenchisaurus|5
+Yutyrannus|5
+Halszkaraptor|5
+Mononykus|5
+Dreadnoughtus|5
+Sinosauropteryx|5
+Eoraptor|5`},
+  { q: "A European capital city", common: "Paris", list: `
+Paris|0
+London|0
+Rome|0
+Madrid|0
+Berlin|0
+Dublin|1
+Amsterdam|1
+Lisbon|1
+Athens|1
+Vienna|1
+Brussels|1
+Prague|1
+Moscow|2
+Copenhagen|2
+Stockholm|2
+Oslo|2
+Warsaw|2
+Budapest|2
+Edinburgh|2
+Cardiff|2
+Helsinki|3
+Bern|3|berne
+Reykjavik|3|reykjavík
+Kyiv|3|kiev
+Bucharest|3
+Belgrade|3
+Zagreb|3
+Sofia|3
+Bratislava|3
+Belfast|3
+Monaco|4
+San Marino|4
+Vatican City|4|vatican
+Luxembourg|4|luxembourg city
+Ljubljana|4
+Tallinn|4
+Riga|4
+Vilnius|4
+Valletta|4
+Sarajevo|4
+Tirana|4
+Minsk|4
+Nicosia|4
+Andorra la Vella|5
+Vaduz|5
+Skopje|5
+Podgorica|5
+Chișinău|5|chisinau
+Pristina|5|prishtina`},
+  { q: "A musical instrument", common: "Guitar", list: `
+Guitar|0|electric guitar|acoustic guitar
+Piano|0
+Drums|0|drum|drum kit
+Violin|0|fiddle
+Trumpet|0
+Flute|1
+Saxophone|1|sax
+Cello|1
+Bass Guitar|1|bass
+Clarinet|1
+Harp|1
+Keyboard|1
+Recorder|2
+Ukulele|2|uke
+Trombone|2
+Tuba|2
+Harmonica|2
+Xylophone|2
+Banjo|2
+Accordion|2
+Triangle|2
+Tambourine|2
+Organ|2
+Double Bass|2|upright bass|contrabass
+Viola|3
+Oboe|3
+Bassoon|3
+French Horn|3|horn
+Bagpipes|3|bagpipe
+Mandolin|3
+Sitar|3
+Glockenspiel|3
+Cymbals|3|cymbal
+Harpsichord|3
+Bongos|3
+Didgeridoo|3
+Kazoo|3
+Cowbell|3
+Tabla|4
+Theremin|4
+Lute|4
+Marimba|4
+Steel Drum|4|steelpan|steel pan
+Cornet|4
+Piccolo|4
+Euphonium|4
+Ocarina|4
+Zither|4
+Koto|4
+Balalaika|4
+Kalimba|4|thumb piano
+Erhu|5
+Hurdy-Gurdy|5|hurdy gurdy
+Shamisen|5
+Duduk|5
+Oud|5
+Nyckelharpa|5
+Handpan|5|hang|hang drum
+Glass Harmonica|5
+Crumhorn|5
+Serpent|5
+Sackbut|5
+Mbira|5
+Kora|5
+Guzheng|5`},
+  { q: "A Pixar film", common: "Toy Story", list: `
+Toy Story|0|toy story 2|toy story 3|toy story 4
+Finding Nemo|0|nemo
+Monsters, Inc.|0|monsters inc
+The Incredibles|0|incredibles|incredibles 2|the incredibles 2
+Cars|0|cars 2|cars 3
+Up|1
+Inside Out|1|inside out 2
+Coco|1
+Ratatouille|1
+WALL-E|1|wall e|walle
+Finding Dory|2
+Monsters University|2
+A Bug's Life|2|a bugs life|bugs life
+Brave|2
+Soul|2
+Luca|2
+Turning Red|2
+Onward|3
+Elemental|3
+The Good Dinosaur|3|good dinosaur
+Lightyear|3
+Elio|4
+Bao|4
+Piper|4
+Lava|4
+Luxo Jr.|5|luxo jr|luxo junior
+For the Birds|5
+Geri's Game|5|geris game
+Tin Toy|5
+Knick Knack|5
+La Luna|5
+Day & Night|5|day and night
+Partly Cloudy|5
+Presto|5`},
+];
+
+// ---- matching ----
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/&/g, " and ").replace(/[^a-z0-9 ]/g, " ").replace(/\b(the|a|an)\b/g, " ").replace(/\s+/g, " ").trim();
+function lev(a, b) {
+  const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) { const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur; }
+  return prev[n];
+}
+function parse(p) {
+  return p.list.trim().split("\n").map(line => {
+    const [name, tier, ...aliases] = line.split("|");
+    return { name, tier: +tier, keys: [name, ...aliases].map(norm) };
+  });
+}
+PROMPTS.forEach(p => { p.answers = parse(p); p.rarest = p.answers.filter(a => a.tier === 5).map(a => a.name); });
+function match(prompt, guess) {
+  const g = norm(guess); if (!g) return null;
+  for (const a of prompt.answers) if (a.keys.includes(g)) return a;
+  let best = null, bestD = Infinity;
+  for (const a of prompt.answers) for (const k of a.keys) {
+    const tol = k.length >= 9 ? 2 : k.length >= 5 ? 1 : 0;
+    const d = lev(g, k); if (d <= tol && d < bestD) { best = a; bestD = d; }
+  }
+  return best;
+}
+
+
+// ---- the world ----
+const PX = 3;  // pixels per metre
+// each gem tier lives in its own rock layer: rarer answers sit deeper
+const STRATA = [
+  { name: "Topsoil",   from: 0,   to: 50,  c: "#5e4130", tex: "rgba(0,0,0,.18)" },
+  { name: "Clay",      from: 50,  to: 110, c: "#7a4a32", tex: "rgba(0,0,0,.16)" },
+  { name: "Sandstone", from: 110, to: 180, c: "#8a6440", tex: "rgba(255,230,190,.08)" },
+  { name: "Limestone", from: 180, to: 260, c: "#5f5952", tex: "rgba(255,255,255,.06)" },
+  { name: "Granite",   from: 260, to: 350, c: "#4a4245", tex: "rgba(255,190,190,.12)" },
+  { name: "Bedrock",   from: 350, to: 470, c: "#241c19", tex: "rgba(255,255,255,.05)" },
+];
+const MAX_M = 470;
+const tierDepth = t => (STRATA[t].from + STRATA[t].to) / 2 + 6;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = id => document.getElementById(id);
+const world = $("world"), miner = $("miner"), pick = $("pick"), glow = $("glow"), finds = $("finds"), rope = $("rope");
+const panel = $("panel");
+let S = 1.9, curY = 0, score = 0, cam = { y: 0, anchor: 0.58 };
+
+const DECOR = {
+  root: `<svg viewBox="0 0 40 30"><path d="M20,0 C18,10 10,12 6,22 M20,0 C22,9 30,14 34,26 M19,8 C14,10 13,16 16,24" stroke="#3b2a1c" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>`,
+  worm: `<svg viewBox="0 0 40 16"><path d="M3,10 C9,2 14,14 20,8 C26,2 30,12 37,6" stroke="#c97a7a" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`,
+  bone: `<svg viewBox="0 0 44 18"><path d="M8,9 H36" stroke="#e8dcc4" stroke-width="5" stroke-linecap="round"/><circle cx="6" cy="5" r="4" fill="#e8dcc4"/><circle cx="6" cy="13" r="4" fill="#e8dcc4"/><circle cx="38" cy="5" r="4" fill="#e8dcc4"/><circle cx="38" cy="13" r="4" fill="#e8dcc4"/></svg>`,
+  skull: `<svg viewBox="0 0 60 30"><path d="M4,18 C6,6 22,2 36,6 L56,12 L52,18 L40,16 L38,24 L12,26 C6,26 4,22 4,18Z" fill="#d9ccb2"/><circle cx="20" cy="13" r="4" fill="#5a4636"/><path d="M42,16 L44,20 M47,15 L48,19 M52,14 L52,18" stroke="#5a4636" stroke-width="1.5"/></svg>`,
+  ammonite: `<svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#b5ab9b"/><path d="M15,15 m0,-2 a2,2 0 1,1 -2,2 a4,4 0 1,1 6,-3 a7,7 0 1,1 -10,8 a10,10 0 1,1 15,-11" stroke="#7b7266" stroke-width="1.6" fill="none"/></svg>`,
+  vein: `<svg viewBox="0 0 60 20"><path d="M2,14 L14,8 L22,12 L34,4 L46,9 L58,3" stroke="#d4a64a" stroke-width="2" fill="none" opacity=".8"/></svg>`,
+  lava: `<svg viewBox="0 0 60 20"><path d="M2,10 C12,4 18,16 30,10 C42,4 48,14 58,8" stroke="#ff6a2a" stroke-width="3" fill="none" stroke-linecap="round" opacity=".75"/></svg>`,
+};
+const LAYER_DECOR = [["root", "worm", "root"], ["bone", "skull", "bone"], ["bone", "vein"], ["ammonite", "ammonite"], ["vein", "vein"], ["lava", "lava"]];
+
+function buildWorld() {
+  let r = 11;
+  const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  const sky = $("sky");
+  for (let i = 0; i < 90; i++) {
+    const s = document.createElement("i"); s.className = "star" + (i % 4 ? "" : " tw");
+    const size = 1 + rnd() * 2;
+    Object.assign(s.style, { left: rnd() * 100 + "%", top: rnd() * 92 + "%", width: size + "px", height: size + "px", opacity: 0.4 + rnd() * 0.6, animationDelay: rnd() * 2.6 + "s" });
+    sky.appendChild(s);
+  }
+  const under = $("under");
+  under.style.height = MAX_M * PX + "px";
+  STRATA.forEach((b, i) => {
+    const d = document.createElement("div");
+    d.className = "band";
+    const lb = document.createElement("div"); lb.className = "lbl"; lb.textContent = `${b.name} · ${TIERS[i].name}`; lb.style.top = b.from * PX + 12 + "px"; $("labels").appendChild(lb);
+    Object.assign(d.style, { top: b.from * PX + "px", height: (b.to - b.from) * PX + "px", backgroundColor: b.c,
+      backgroundImage: `radial-gradient(${b.tex} 18%, transparent 20%), radial-gradient(rgba(0,0,0,.18) 14%, transparent 16%)`,
+      backgroundSize: "38px 31px, 57px 47px", backgroundPosition: "0 0, 19px 13px", boxShadow: "inset 0 2px 0 rgba(0,0,0,.25)" });
+    under.appendChild(d);
+    // scatter this layer's gem plus a few things you'd find at this depth, keeping the shaft clear
+    const count = 26;
+    for (let k = 0; k < count; k++) {
+      let side; do { side = rnd() * 1300 - 650; } while (SHAFT_X.some(sx => Math.abs(sx - side) < 50));  // px from centre, clear of every hole
+      const y = (b.from + 10 + rnd() * (b.to - b.from - 18)) * PX;
+      const e = document.createElement("div");
+      const isGem = k % 3 !== 2;
+      if (isGem) {
+        e.className = `deco gem t${i}`;
+        e.style.width = (16 + rnd() * 14 + i * 2) + "px";
+      } else {
+        const kinds = LAYER_DECOR[i]; e.className = "deco";
+        e.innerHTML = DECOR[kinds[Math.floor(rnd() * kinds.length)]];
+        e.style.width = (34 + rnd() * 24) + "px";
+      }
+      Object.assign(e.style, { left: `calc(50% + ${side}px)`, top: y + "px", transform: `translate(-50%,-50%) rotate(${(rnd() * 70 - 35).toFixed(0)}deg)` });
+      under.appendChild(e);
+    }
+  });
+  const dark = document.createElement("div"); dark.className = "darkness"; dark.style.height = MAX_M * PX + "px"; under.appendChild(dark);
+  const ruler = $("ruler");
+  for (let m = 0; m <= MAX_M; m += 20) {
+    const t = document.createElement("div"); t.className = "tick" + (m % 100 ? "" : " big"); t.style.top = m * PX + "px";
+    if (m % 100 === 0) t.innerHTML = `<span>${m} m</span>`;
+    ruler.appendChild(t);
+  }
+}
+const stratumAt = m => (STRATA.find(b => m < b.to) || STRATA[STRATA.length - 1]).name;
+
+function sizeMiner() {
+  S = innerWidth < 600 ? 1.6 : 2;
+  miner.setAttribute("viewBox", "-35 -62 105 72");
+  miner.setAttribute("width", 105 * S); miner.setAttribute("height", 72 * S);
+}
+// each prompt gets its own fresh hole, five steps along from the last one
+const SHAFT_X = [-260, -130, 0, 130, 260];
+let minerX = SHAFT_X[0], curShaft = null, shaftY = 0;
+function newShaft(x) {
+  curShaft = document.createElement("div");
+  curShaft.className = "shaft";
+  curShaft.style.left = `calc(50% + ${x}px)`;
+  $("shafts").appendChild(curShaft); shaftY = 0;
+}
+function setMiner(x, y) {
+  minerX = x; curY = y;
+  miner.style.transform = `translate(${x - 35 * S}px, ${y - 62 * S}px)`;
+  if (curShaft && y > shaftY) { shaftY = y; curShaft.style.height = y + 4 + "px"; }
+  glow.style.transform = `translate(${x}px, ${y - 40 * S - 150}px)`;
+  glow.style.opacity = y > 4 ? 1 : 0;
+}
+const setPick = a => pick.setAttribute("transform", `rotate(${a})`);
+function place(x, y, anchor) {
+  const ty = Math.round(innerHeight * anchor - y);
+  world.style.transform = `translate(${-x}px, ${ty}px)`;
+  $("rulerWrap").style.transform = `translateY(${ty}px)`;
+}
+function camTo(y, anchor, animate) {
+  cam = { y, anchor };
+  const t = animate && !reduceMotion ? "transform 900ms cubic-bezier(.45,0,.2,1)" : "none";
+  world.style.transition = t; $("rulerWrap").style.transition = t;
+  place(minerX, y, anchor);
+}
+function follow(x, y) {
+  world.style.transition = "none"; $("rulerWrap").style.transition = "none";
+  cam.y = y; place(x, y, cam.anchor);
+}
+function setHUD(m) {
+  $("scoreNum").textContent = score + " pts";
+  $("stratum").textContent = (m < 1 ? "Surface" : stratumAt(m)) + " · " + Math.round(m) + " m";
+}
+
+const tween = (ms, fn) => new Promise(res => {
+  if (ms <= 0 || reduceMotion) { fn(1); return res(); }
+  const s = performance.now();
+  const f = t => { const k = Math.min(1, (t - s) / ms); fn(k); k < 1 ? requestAnimationFrame(f) : res(); };
+  requestAnimationFrame(f);
+});
+const ease = k => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+const easeIn = k => k * k * k;
+
+let idleRAF = null;
+function idle(on) {
+  cancelAnimationFrame(idleRAF);
+  if (!on || reduceMotion) return;
+  const loop = t => { setPick(-55 + Math.sin(t / 500) * 7); idleRAF = requestAnimationFrame(loop); };
+  idleRAF = requestAnimationFrame(loop);
+}
+
+function burst(x, y, tier) {
+  const add = (cls, style) => { const e = document.createElement("div"); e.className = cls; Object.assign(e.style, style); finds.appendChild(e); setTimeout(() => e.remove(), 900); };
+  add("flash", { left: x, top: y + "px", "--s": 6 + tier * 2 });
+  if (tier >= 2) for (let i = 0; i < 6 + tier * 2; i++) {
+    const a = (i / (6 + tier * 2)) * Math.PI * 2, d = 40 + tier * 14;
+    add("spark", { left: x, top: y + "px", "--x": Math.cos(a) * d + "px", "--y": Math.sin(a) * d + "px" });
+  }
+}
+function dust(x, y) {
+  for (let i = 0; i < 5; i++) {
+    const e = document.createElement("div"); e.className = "dust";
+    Object.assign(e.style, { left: x, top: y + "px", "--x": (Math.random() * 40 - 10) + "px", "--y": (-Math.random() * 30) + "px" });
+    finds.appendChild(e); setTimeout(() => e.remove(), 800);
+  }
+}
+
+// from the surface, dig a fresh hole down to the layer of `tier` and strike its gem (null = came up empty)
+async function dig(tier) {
+  idle(false); cam.anchor = 0.3;
+  const x = minerX, to = tier == null ? 0 : tierDepth(tier) * PX;
+  newShaft(x);
+  await tween(240, k => setPick(-55 - 25 * k));
+  if (to > 0) {
+    const swings = 3 + tier * 2, dur = 1000 + tier * 380;
+    await tween(dur, k => {
+      const y = to * ease(k);
+      setMiner(x, y); setHUD(y / PX); follow(x, y);
+      const ph = (k * swings) % 1;
+      setPick(ph < 0.5 ? -80 + 130 * (ph / 0.5) : 50 - 130 * ((ph - 0.5) / 0.5));
+    });
+  }
+  await tween(200, k => setPick(50 - 130 * k));
+  await tween(110, k => setPick(-80 + 130 * k * k));
+  const gx = `calc(50% + ${x + 30 * S}px)`, gy = to - 8 * S;
+  if (tier == null) { dust(gx, gy); await tween(450, () => {}); }
+  else {
+    burst(gx, gy, tier);
+    const g = document.createElement("div");
+    g.className = `gem t${tier} struck`;
+    Object.assign(g.style, { left: gx, top: gy + "px", width: (26 + tier * 3) * S / 1.6 + "px" });
+    finds.appendChild(g);
+    await tween(520, () => {});
+  }
+  setPick(-20);
+}
+
+// clip onto the line and zip up out of the hole
+async function zipUp() {
+  const from = curY, x = minerX;
+  idle(false);
+  if (from > 0) {
+    rope.style.left = `calc(50% + ${x + 4}px)`;
+    rope.style.height = (from - 52 * S + 150) + "px";
+    rope.hidden = false; setPick(-100);
+    await tween(250, () => {});                                   // clip on
+    await tween(380 + from * 0.22, k => {                         // zip!
+      const y = from * (1 - easeIn(k));
+      setMiner(x, y); setHUD(y / PX); follow(x, y);
+      rope.style.height = Math.max(0, y - 52 * S + 150) + "px";
+    });
+    await tween(140, k => setMiner(x, -10 * Math.sin(k * Math.PI)));  // pop out onto the grass
+    rope.hidden = true;
+  }
+  setPick(-35);
+}
+
+// five steps along to fresh ground
+async function walkTo(toX) {
+  const from = minerX;
+  await tween(1150, k => {
+    const x = from + (toX - from) * k;
+    setMiner(x, -Math.abs(Math.sin(k * 5 * Math.PI)) * 5);
+    follow(x, 0);
+  });
+  setMiner(toX, 0); setPick(-55);
+}
+
+// ---- game flow ----
+let round = 0, results = [], tick = null;
+const gemHTML = tier => `<div class="gem ${tier == null ? "empty" : "t" + tier}"></div>`;
+function drawSockets() {
+  $("sockets").innerHTML = Array.from({ length: ROUNDS }, (_, i) => {
+    const r = results[i];
+    return `<div class="socket ${i === round && !r ? "now" : ""}">${r ? gemHTML(r.tier) : ""}</div>`;
+  }).join("");
+}
+function showPanel(html, cls = "") { panel.className = "panel " + cls; panel.innerHTML = html; }
+
+function startScreen() {
+  clearInterval(tick);
+  round = 0; results = []; score = 0; finds.innerHTML = ""; $("shafts").innerHTML = ""; curShaft = null;
+  setMiner(SHAFT_X[0], 0); setPick(-55); setHUD(0);
+  camTo(0, 0.58, true);
+  $("title").classList.remove("gone"); $("hud").classList.add("gone");
+  idle(true);
+  showPanel(`
+    <p class="lede">Name something for each prompt. <b>Any correct answer counts</b>, but the more obscure it is, the deeper the miner digs and the rarer the gem he hits.</p>
+    <div class="legend">${TIERS.map((t, i) => `<div>${gemHTML(i)}<span>${t.name}<small>${t.pts} pts</small></span></div>`).join("")}</div>
+    <button class="big" id="go">Start digging</button>
+    <div class="foot"><span>Dig #2</span><span>25 Oct 2026</span></div>`);
+  $("go").onclick = () => {
+    $("title").classList.add("gone"); $("hud").classList.remove("gone");
+    camTo(0, 0.3, true);
+    roundScreen();
+  };
+  $("go").focus();
+}
+
+function roundScreen() {
+  const p = PROMPTS[round];
+  drawSockets(); idle(true);
+  showPanel(`
+    <div class="roundtag">Prompt ${round + 1} of ${ROUNDS}</div>
+    <h2 class="prompt">${p.q}</h2>
+    <div class="timer" id="timer"><i id="bar"></i></div>
+    <form id="f" autocomplete="off">
+      <input id="ans" placeholder="Type an answer…" aria-label="Your answer" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="submit">Swing</button>
+    </form>
+    <p class="hint" id="hint"></p>
+    <div class="secs" id="secs">${SECONDS}s left</div>`);
+  const input = $("ans"), bar = $("bar"), secs = $("secs"), timer = $("timer");
+  input.focus({ preventScroll: true });
+  const end = Date.now() + SECONDS * 1000;
+  clearInterval(tick);
+  tick = setInterval(() => {
+    const left = Math.max(0, end - Date.now());
+    bar.style.transform = `scaleX(${left / (SECONDS * 1000)})`;
+    secs.textContent = Math.ceil(left / 1000) + "s left";
+    timer.classList.toggle("low", left < 6000);
+    if (left <= 0) { clearInterval(tick); finishRound(match(p, input.value)); }
+  }, 100);
+  $("f").onsubmit = e => {
+    e.preventDefault();
+    const hit = match(p, input.value);
+    if (!hit) { $("hint").textContent = input.value.trim() ? "That doesn't count here. Try another." : "Type something first."; input.select(); return; }
+    clearInterval(tick); finishRound(hit);
+  };
+}
+
+async function finishRound(hit) {
+  const p = PROMPTS[round];
+  const r = hit ? { q: p.q, said: hit.name, tier: hit.tier, pts: TIERS[hit.tier].pts } : { q: p.q, said: null, tier: null, pts: 0 };
+  results.push(r);
+  document.activeElement && document.activeElement.blur();
+  panel.classList.add("hide");
+  await dig(r.tier);
+  score += r.pts; setHUD(curY / PX); drawSockets();
+  revealScreen(r, p);
+}
+
+function revealScreen(r, p) {
+  const rare = p.rarest.filter(n => n !== r.said)[0] || p.rarest[0];
+  showPanel(`
+    <div class="reveal-head">${gemHTML(r.tier)}<div><p class="tiername">${r.tier == null ? "Came up empty" : TIERS[r.tier].name}</p><div class="pts">+${r.pts} pts${r.tier == null ? "" : " · " + STRATA[r.tier].name}</div></div></div>
+    <p class="youSaid">${r.said ? `You dug up <b>${r.said}</b>` : "Time ran out before you struck anything."}</p>
+    <div class="facts">
+      <div><small>Most people said</small><b>${p.common}</b></div>
+      <div><small>A diamond was</small><b>${rare}</b></div>
+    </div>
+    <button id="next">Back up</button>`, "reveal");
+  $("next").focus({ preventScroll: true });
+  $("next").onclick = async () => {
+    panel.classList.add("hide");
+    await zipUp();
+    round++;
+    if (round < ROUNDS) await walkTo(SHAFT_X[round]);
+    round < ROUNDS ? roundScreen() : resultsScreen();
+  };
+}
+
+function resultsScreen() {
+  drawSockets(); idle(true);
+  const share = `Deep Cut #2 ⛏️ ${score}/500\n${results.map(r => r.tier == null ? "▫️" : TIERS[r.tier].emoji).join("")}`;
+  showPanel(`
+    <div class="roundtag">Today's haul</div>
+    <p class="total">${score}<small> / 500</small></p>
+    <ul class="recap">${results.map(r => `
+      <li>${gemHTML(r.tier)}<div><div class="q">${r.q}</div><div class="a">${r.said || "Nothing found"}</div></div><span class="p">${r.pts}</span></li>`).join("")}
+    </ul>
+    <pre class="share" id="share">${share}</pre>
+    <div class="row"><button id="copy">Copy result</button><button class="ghost" id="again">Play again</button></div>
+    <p class="toast" id="toast"></p>`);
+  $("copy").onclick = () => {
+    const t = $("toast");
+    navigator.clipboard.writeText(share).then(() => t.textContent = "Copied. Go flex it.").catch(() => {
+      const sel = getSelection(), rng = document.createRange(); rng.selectNodeContents($("share"));
+      sel.removeAllRanges(); sel.addRange(rng); t.textContent = "Selected. Copy it with your keyboard.";
+    });
+  };
+  $("again").onclick = startScreen;
+}
+
+addEventListener("resize", () => { sizeMiner(); setMiner(minerX, curY); camTo(cam.y, cam.anchor, false); });
+buildWorld(); sizeMiner(); startScreen();
+</script>
+
+</body>
+</html>
