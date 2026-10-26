@@ -258,266 +258,24 @@ const TIERS = [
 const ROUNDS = 5, SECONDS = 25;
 
 // "Answer|tier|alias|alias"  — tier 0 (everyone says it) to 5 (almost nobody)
-const PROMPTS = [
-  { q: "A dog breed", common: "Labrador", list: `
-Labrador|0|labrador retriever|lab
-Golden Retriever|0|golden
-German Shepherd|0|alsatian
-Pug|0
-Bulldog|1|english bulldog|british bulldog
-French Bulldog|1|frenchie
-Poodle|1|toy poodle|miniature poodle
-Beagle|1
-Chihuahua|1
-Husky|1|siberian husky
-Rottweiler|1
-Dachshund|1|sausage dog|wiener dog
-Border Collie|1|collie
-Cocker Spaniel|2|spaniel
-Staffordshire Bull Terrier|2|staffy|staffie|staffordshire terrier
-Pit Bull|2|pitbull|american pit bull terrier
-Boxer|2
-Great Dane|2
-Dalmatian|2
-Jack Russell|2|jack russell terrier
-Shih Tzu|2
-Yorkshire Terrier|2|yorkie
-Pomeranian|2
-Corgi|2|welsh corgi|pembroke welsh corgi
-Doberman|2|dobermann|doberman pinscher
-Greyhound|2
-English Springer Spaniel|3|springer spaniel|springer
-Cavalier King Charles Spaniel|3|cavalier|king charles spaniel
-Bichon Frise|3|bichon
-Shiba Inu|3|shiba
-Saint Bernard|3|st bernard
-Bernese Mountain Dog|3|bernese
-Whippet|3
-Akita|3
-Samoyed|3
-Weimaraner|3
-Newfoundland|3
-Maltese|3
-Basset Hound|3|basset
-Bloodhound|3
-Chow Chow|3|chow
-Shar Pei|3|sharpei
-Vizsla|4
-Bedlington Terrier|4|bedlington
-Basenji|4
-Borzoi|4
-Rhodesian Ridgeback|4|ridgeback
-Afghan Hound|4|afghan
-Puli|4
-Komondor|5
-Xoloitzcuintli|5|xolo|mexican hairless
-Lagotto Romagnolo|5|lagotto
-Otterhound|5
-Norwegian Lundehund|5|lundehund
-Azawakh|5
-Bergamasco|5
-Kooikerhondje|5|kooiker
-Sealyham Terrier|5|sealyham
-Dandie Dinmont Terrier|5|dandie dinmont`},
-  { q: "A dinosaur", common: "Tyrannosaurus rex", list: `
-Tyrannosaurus|0|t rex|trex|tyrannosaurus rex|t-rex
-Triceratops|0
-Velociraptor|0|raptor
-Stegosaurus|0
-Brachiosaurus|1
-Diplodocus|1
-Spinosaurus|1
-Ankylosaurus|1
-Brontosaurus|1
-Apatosaurus|2
-Allosaurus|2
-Iguanodon|2
-Parasaurolophus|2
-Pachycephalosaurus|2
-Dilophosaurus|2
-Gallimimus|3
-Carnotaurus|3
-Megalosaurus|3
-Giganotosaurus|3
-Compsognathus|3
-Argentinosaurus|3
-Oviraptor|3
-Archaeopteryx|3
-Deinonychus|3
-Baryonyx|3
-Therizinosaurus|4
-Utahraptor|4
-Microraptor|4
-Edmontosaurus|4
-Protoceratops|4
-Maiasaura|4
-Styracosaurus|4
-Plateosaurus|4
-Coelophysis|4
-Herrerasaurus|4
-Amargasaurus|5
-Nigersaurus|5
-Kosmoceratops|5
-Irritator|5
-Mamenchisaurus|5
-Yutyrannus|5
-Halszkaraptor|5
-Mononykus|5
-Dreadnoughtus|5
-Sinosauropteryx|5
-Eoraptor|5`},
-  { q: "A European capital city", common: "Paris", list: `
-Paris|0
-London|0
-Rome|0
-Madrid|0
-Berlin|0
-Dublin|1
-Amsterdam|1
-Lisbon|1
-Athens|1
-Vienna|1
-Brussels|1
-Prague|1
-Moscow|2
-Copenhagen|2
-Stockholm|2
-Oslo|2
-Warsaw|2
-Budapest|2
-Edinburgh|2
-Cardiff|2
-Helsinki|3
-Bern|3|berne
-Reykjavik|3|reykjavík
-Kyiv|3|kiev
-Bucharest|3
-Belgrade|3
-Zagreb|3
-Sofia|3
-Bratislava|3
-Belfast|3
-Monaco|4
-San Marino|4
-Vatican City|4|vatican
-Luxembourg|4|luxembourg city
-Ljubljana|4
-Tallinn|4
-Riga|4
-Vilnius|4
-Valletta|4
-Sarajevo|4
-Tirana|4
-Minsk|4
-Nicosia|4
-Andorra la Vella|5
-Vaduz|5
-Skopje|5
-Podgorica|5
-Chișinău|5|chisinau
-Pristina|5|prishtina`},
-  { q: "A musical instrument", common: "Guitar", list: `
-Guitar|0|electric guitar|acoustic guitar
-Piano|0
-Drums|0|drum|drum kit
-Violin|0|fiddle
-Trumpet|0
-Flute|1
-Saxophone|1|sax
-Cello|1
-Bass Guitar|1|bass
-Clarinet|1
-Harp|1
-Keyboard|1
-Recorder|2
-Ukulele|2|uke
-Trombone|2
-Tuba|2
-Harmonica|2
-Xylophone|2
-Banjo|2
-Accordion|2
-Triangle|2
-Tambourine|2
-Organ|2
-Double Bass|2|upright bass|contrabass
-Viola|3
-Oboe|3
-Bassoon|3
-French Horn|3|horn
-Bagpipes|3|bagpipe
-Mandolin|3
-Sitar|3
-Glockenspiel|3
-Cymbals|3|cymbal
-Harpsichord|3
-Bongos|3
-Didgeridoo|3
-Kazoo|3
-Cowbell|3
-Tabla|4
-Theremin|4
-Lute|4
-Marimba|4
-Steel Drum|4|steelpan|steel pan
-Cornet|4
-Piccolo|4
-Euphonium|4
-Ocarina|4
-Zither|4
-Koto|4
-Balalaika|4
-Kalimba|4|thumb piano
-Erhu|5
-Hurdy-Gurdy|5|hurdy gurdy
-Shamisen|5
-Duduk|5
-Oud|5
-Nyckelharpa|5
-Handpan|5|hang|hang drum
-Glass Harmonica|5
-Crumhorn|5
-Serpent|5
-Sackbut|5
-Mbira|5
-Kora|5
-Guzheng|5`},
-  { q: "A Pixar film", common: "Toy Story", list: `
-Toy Story|0|toy story 2|toy story 3|toy story 4
-Finding Nemo|0|nemo
-Monsters, Inc.|0|monsters inc
-The Incredibles|0|incredibles|incredibles 2|the incredibles 2
-Cars|0|cars 2|cars 3
-Up|1
-Inside Out|1|inside out 2
-Coco|1
-Ratatouille|1
-WALL-E|1|wall e|walle
-Finding Dory|2
-Monsters University|2
-A Bug's Life|2|a bugs life|bugs life
-Brave|2
-Soul|2
-Luca|2
-Turning Red|2
-Onward|3
-Elemental|3
-The Good Dinosaur|3|good dinosaur
-Lightyear|3
-Elio|4
-Bao|4
-Piper|4
-Lava|4
-Luxo Jr.|5|luxo jr|luxo junior
-For the Birds|5
-Geri's Game|5|geris game
-Tin Toy|5
-Knick Knack|5
-La Luna|5
-Day & Night|5|day and night
-Partly Cloudy|5
-Presto|5`},
-];
+// Today's prompts come from questions.json, keyed by date (YYYY-MM-DD)
+let PROMPTS = [], DAY = { key: "", num: 1, label: "" };
+const pad = n => String(n).padStart(2, "0");
+const localKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const keyToDate = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+function pickDay(data) {
+  const today = new Date(), key = localKey(today);
+  const launch = keyToDate(data.launch);
+  const since = Math.max(0, Math.round((keyToDate(key) - launch) / 864e5));
+  const keys = Object.keys(data.days).sort();
+  // if today's set hasn't been written yet, cycle through the existing ones so the game never breaks
+  const useKey = data.days[key] ? key : keys[since % keys.length];
+  return { key, num: since + 1, label: today.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), prompts: data.days[useKey] };
+}
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
 
 // ---- matching ----
 const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -530,12 +288,17 @@ function lev(a, b) {
   return prev[n];
 }
 function parse(p) {
-  return p.list.trim().split("\n").map(line => {
+  return p.answers.map(line => {
     const [name, tier, ...aliases] = line.split("|");
     return { name, tier: +tier, keys: [name, ...aliases].map(norm) };
   });
 }
-PROMPTS.forEach(p => { p.answers = parse(p); p.rarest = p.answers.filter(a => a.tier === 5).map(a => a.name); });
+function prepare(prompts) {
+  return prompts.map(p => {
+    const answers = parse(p), top = Math.max(...answers.map(a => a.tier));
+    return { q: p.q, common: p.common, answers, rarest: answers.filter(a => a.tier === top).map(a => a.name) };
+  });
+}
 function match(prompt, guess) {
   const g = norm(guess); if (!g) return null;
   for (const a of prompt.answers) if (a.keys.includes(g)) return a;
@@ -785,7 +548,9 @@ function startScreen() {
     <p class="lede">Name something for each prompt. <b>Any correct answer counts</b>, but the more obscure it is, the deeper the miner digs and the rarer the gem he hits.</p>
     <div class="legend">${TIERS.map((t, i) => `<div>${gemHTML(i)}<span>${t.name}<small>${t.pts} pts</small></span></div>`).join("")}</div>
     <button class="big" id="go">Start digging</button>
-    <div class="foot"><span>Dig #2</span><span>25 Oct 2026</span></div>`);
+    <div class="foot"><span>Dig #${DAY.num}</span><span>${DAY.label}</span></div>`);
+  const done = store.get("deepcut:" + DAY.key);
+  if (done) { $("go").textContent = "Dig again for fun"; panel.querySelector(".lede").innerHTML = `You've already dug today: <b>${done.score} pts</b> ${done.emojis}. A new dig opens at midnight. Replays don't change your score.`; }
   $("go").onclick = () => {
     $("title").classList.add("gone"); $("hud").classList.remove("gone");
     camTo(0, 0.3, true);
@@ -859,7 +624,9 @@ function revealScreen(r, p) {
 
 function resultsScreen() {
   drawSockets(); idle(true);
-  const share = `Deep Cut #2 ⛏️ ${score}/500\n${results.map(r => r.tier == null ? "▫️" : TIERS[r.tier].emoji).join("")}`;
+  const emojis = results.map(r => r.tier == null ? "▫️" : TIERS[r.tier].emoji).join("");
+  if (!store.get("deepcut:" + DAY.key)) store.set("deepcut:" + DAY.key, { score, emojis });
+  const share = `Deep Cut #${DAY.num} ⛏️ ${score}/500\n${emojis}\ndeep-cut-coral.vercel.app`;
   showPanel(`
     <div class="roundtag">Today's haul</div>
     <p class="total">${score}<small> / 500</small></p>
@@ -880,7 +647,12 @@ function resultsScreen() {
 }
 
 addEventListener("resize", () => { sizeMiner(); setMiner(minerX, curY); camTo(cam.y, cam.anchor, false); });
-buildWorld(); sizeMiner(); startScreen();
+buildWorld(); sizeMiner();
+showPanel(`<p class="lede">Loading today's dig…</p>`);
+fetch("questions.json", { cache: "no-cache" })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => { const d = pickDay(data); DAY = d; PROMPTS = prepare(d.prompts); startScreen(); })
+  .catch(() => showPanel(`<p class="lede">Couldn't load today's questions. Check your connection and refresh the page.</p><button id="retry">Try again</button>`) || ($("retry").onclick = () => location.reload()));
 </script>
 
 </body>
